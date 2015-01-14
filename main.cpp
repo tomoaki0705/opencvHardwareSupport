@@ -1,6 +1,9 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/core/ocl.hpp>
+#include <opencv2/imgcodecs/imgcodecs.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/cudaarithm.hpp>
 #include <iostream>
 
 int main(int argc, const char* argv[])
@@ -9,15 +12,15 @@ int main(int argc, const char* argv[])
 	std::cout << cv::getBuildInformation() << std::endl;
 
 	std::cout << "CPU_MMX   : " << cv::checkHardwareSupport(CV_CPU_MMX   ) << std::endl;
-    std::cout << "CPU_SSE   : " << cv::checkHardwareSupport(CV_CPU_SSE   ) << std::endl;
-    std::cout << "CPU_SSE2  : " << cv::checkHardwareSupport(CV_CPU_SSE2  ) << std::endl;
-    std::cout << "CPU_SSE3  : " << cv::checkHardwareSupport(CV_CPU_SSE3  ) << std::endl;
-    std::cout << "CPU_SSSE3 : " << cv::checkHardwareSupport(CV_CPU_SSSE3 ) << std::endl;
-    std::cout << "CPU_SSE4_1: " << cv::checkHardwareSupport(CV_CPU_SSE4_1) << std::endl;
-    std::cout << "CPU_SSE4_2: " << cv::checkHardwareSupport(CV_CPU_SSE4_2) << std::endl;
-    std::cout << "CPU_POPCNT: " << cv::checkHardwareSupport(CV_CPU_POPCNT) << std::endl;
-    std::cout << "CPU_AVX   : " << cv::checkHardwareSupport(CV_CPU_AVX   ) << std::endl;
-    std::cout << "CPU_NEON  : " << cv::checkHardwareSupport(CV_CPU_NEON  ) << std::endl;
+	std::cout << "CPU_SSE   : " << cv::checkHardwareSupport(CV_CPU_SSE   ) << std::endl;
+	std::cout << "CPU_SSE2  : " << cv::checkHardwareSupport(CV_CPU_SSE2  ) << std::endl;
+	std::cout << "CPU_SSE3  : " << cv::checkHardwareSupport(CV_CPU_SSE3  ) << std::endl;
+	std::cout << "CPU_SSSE3 : " << cv::checkHardwareSupport(CV_CPU_SSSE3 ) << std::endl;
+	std::cout << "CPU_SSE4_1: " << cv::checkHardwareSupport(CV_CPU_SSE4_1) << std::endl;
+	std::cout << "CPU_SSE4_2: " << cv::checkHardwareSupport(CV_CPU_SSE4_2) << std::endl;
+	std::cout << "CPU_POPCNT: " << cv::checkHardwareSupport(CV_CPU_POPCNT) << std::endl;
+	std::cout << "CPU_AVX   : " << cv::checkHardwareSupport(CV_CPU_AVX   ) << std::endl;
+	std::cout << "CPU_NEON  : " << cv::checkHardwareSupport(CV_CPU_NEON  ) << std::endl;
 
 	int cudaDeviceCount;
 	cudaDeviceCount = cv::cuda::getCudaEnabledDeviceCount();
@@ -66,6 +69,30 @@ int main(int argc, const char* argv[])
 		std::cout << "Driver Version  [" << iDevice << "]    : " << hoge.driverVersion() << std::endl;
 	}
 
+	cv::Mat before;
+	cv::Mat after;
+
+	before = cv::imread("lena.jpg");
+	after = cv::imread("lena.jpg");
+
+	cv::Mat diff;
+	int64 countStart = cv::getTickCount();
+	cv::absdiff(before, after, diff);
+	int64 countStop = cv::getTickCount();
+
+	std::cout << ((countStop - countStart) * 1000) / cv::getTickFrequency() << "[ms]" << std::endl;
+
+	int64 countBeforeTransfer = cv::getTickCount();
+	cv::cuda::GpuMat gpuBefore = cv::cuda::GpuMat(before);
+	cv::cuda::GpuMat gpuAfter  = cv::cuda::GpuMat(after);
+	cv::cuda::GpuMat gpuDiff;
+
+	countStart = cv::getTickCount();
+	cv::cuda::absdiff(gpuBefore, gpuAfter, gpuDiff);
+	countStop = cv::getTickCount();
+
+	std::cout << ((countStop - countStart) * 1000) / cv::getTickFrequency() << "[ms]" << std::endl;
+	std::cout << ((countStop - countBeforeTransfer) * 1000) / cv::getTickFrequency() << "[ms] (including transfer)" << std::endl;
 
 	return 0;
 }
