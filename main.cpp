@@ -10,6 +10,7 @@
 const char LENA[] = "lena.jpg";
 const char IDOJUN[] = "compare.jpg";
 const char defaultUnit[] = "[ms]";
+const char defaultWindowName[] = "hoge";
 
 void dumpConsumedTime(int64 countStart, int64 countStop, const char* unit = NULL)
 {
@@ -112,6 +113,8 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	imshow(defaultWindowName, diff);
+	waitKey(0);
 }
 
 int main(int argc, const char* argv[])
@@ -177,6 +180,7 @@ int main(int argc, const char* argv[])
 		std::cout << "Driver Version  [" << iDevice << "]    : " << hoge.driverVersion() << std::endl;
 	}
 
+	cv::namedWindow(defaultWindowName);
 	compareAbsDiff(LENA, IDOJUN);
 	compareDiff(LENA, IDOJUN);
 
