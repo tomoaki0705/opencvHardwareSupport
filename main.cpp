@@ -91,10 +91,7 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 
 	Mat diff;
 	int64 countStart = getTickCount();
-	for(int i = 0;i < 10;i++)
-	{
-		absdiff(before, after, diff);
-	}
+	absdiff(before, after, diff);
 	int64 countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
@@ -105,10 +102,7 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	cuda::GpuMat gpuDiff;
 
 	countStart = getTickCount();
-	for(int i = 0;i < 10;i++)
-	{
-		cuda::absdiff(gpuBefore, gpuAfter, gpuDiff);
-	}
+	cuda::absdiff(gpuBefore, gpuAfter, gpuDiff);
 	countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
