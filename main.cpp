@@ -63,6 +63,8 @@ void comapareSobel(const char* filename)
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	imshow(defaultWindowName, umatResult);
+	waitKey(0);
 }
 
 void compareDiff(const char* filenameBefore, const char* filenameAfter)
@@ -161,6 +163,8 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	imshow(defaultWindowName, umatDiff);
+	waitKey(0);
 }
 
 int main(int argc, const char* argv[])
