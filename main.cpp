@@ -21,7 +21,6 @@ void dumpConsumedTime(int64 countStart, int64 countStop, const char* unit = NULL
 	std::cout << ((countStop - countStart) * 1000) / cv::getTickFrequency() << unit << std::endl;
 }
 
-#if 0
 void comapareSobel(const char* filename)
 {
 	using namespace cv;
@@ -31,25 +30,40 @@ void comapareSobel(const char* filename)
 
 	Mat result;
 	int64 countStart = getTickCount();
-	cv::blur(input, result, 3);
+	cv::blur(input, result, cv::Size(3,3));
 	int64 countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 
+	cvtColor(input.clone(), input, COLOR_RGB2RGBA);
 	int64 countBeforeTransfer = getTickCount();
 	cuda::GpuMat gpuInput = cuda::GpuMat(input);
 	cuda::GpuMat gpuResult;
-	cuda::createGaussianFilter(gpuInput.type, gpuInput.type, 3);
+	Ptr<cuda::Filter> gpuBlur = cuda::createBoxFilter(gpuInput.type(), gpuInput.type(), Size(3,3));
 
 	countStart = getTickCount();
-	cuda::Filter::apply(input, result, 
-	cuda::subtract(gpuBefore, gpuAfter, gpuDiff);
+	gpuBlur->apply(gpuInput, gpuResult);
 	countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+
+	UMat umatInput = input.getUMat(ACCESS_READ);
+	UMat umatResult;
+	// dummy call
+	cv::blur(umatInput, umatResult, cv::Size(3,3));
+
+	input = imread(filename);
+	countBeforeTransfer = getTickCount();
+	umatInput = input.getUMat(ACCESS_READ);
+	countStart = getTickCount();
+	cv::blur(umatInput, umatResult, cv::Size(3,3));
+	countStop = getTickCount();
+
+
+	dumpConsumedTime(countStart, countStop, defaultUnit);
+	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
 }
-#endif
 
 void compareDiff(const char* filenameBefore, const char* filenameAfter)
 {
@@ -75,6 +89,26 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	countStart = getTickCount();
 	cuda::subtract(gpuBefore, gpuAfter, gpuDiff);
 	countStop = getTickCount();
+
+	dumpConsumedTime(countStart, countStop, defaultUnit);
+	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+
+
+	// dummy call
+	UMat umatBefore = before.getUMat(ACCESS_READ);
+	UMat umatAfter  = after.getUMat(ACCESS_READ);
+	UMat umatDiff;
+	subtract(umatBefore, umatAfter, umatDiff);
+
+	before = imread(filenameBefore);
+	after = imread(filenameAfter);
+	countBeforeTransfer = getTickCount();
+	umatBefore = before.getUMat(ACCESS_READ);
+	umatAfter  = after.getUMat(ACCESS_READ);
+	countStart = getTickCount();
+	subtract(umatBefore, umatAfter, umatDiff);
+	countStop = getTickCount();
+
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
@@ -107,8 +141,26 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
-	imshow(defaultWindowName, diff);
-	waitKey(0);
+
+	UMat umatBefore = before.getUMat(ACCESS_READ);
+	UMat umatAfter  = after.getUMat(ACCESS_READ);
+	UMat umatDiff;
+
+	// dummy call
+	absdiff(umatBefore, umatAfter, umatDiff);
+
+	before = imread(filenameBefore);
+	after = imread(filenameAfter);
+	countBeforeTransfer = getTickCount();
+	umatBefore = before.getUMat(ACCESS_READ);
+	umatAfter  = after.getUMat(ACCESS_READ);
+	countStart = getTickCount();
+	absdiff(umatBefore, umatAfter, umatDiff);
+	countStop = getTickCount();
+
+
+	dumpConsumedTime(countStart, countStop, defaultUnit);
+	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
 }
 
 int main(int argc, const char* argv[])
@@ -172,11 +224,15 @@ int main(int argc, const char* argv[])
 		std::cout << "Version Major   [" << iDevice << "]    : " << hoge.deviceVersionMajor() <<  std::endl;
 		std::cout << "Version Minor   [" << iDevice << "]    : " << hoge.deviceVersionMinor() <<  std::endl;
 		std::cout << "Driver Version  [" << iDevice << "]    : " << hoge.driverVersion() << std::endl;
+		cv::ocl::setUseOpenCL(true);
+		std::cout << "haveOpenCL()                           : " << cv::ocl::haveOpenCL() << std::endl;
+		std::cout << "useOpenCL()                            : " << cv::ocl::useOpenCL() << std::endl;
 	}
 
 	cv::namedWindow(defaultWindowName);
 	compareAbsDiff(LENA, IDOJUN);
 	compareDiff(LENA, IDOJUN);
+	comapareSobel(IDOJUN);
 
 	return 0;
 }
