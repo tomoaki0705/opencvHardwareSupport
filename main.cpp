@@ -259,7 +259,9 @@ int main(int argc, const char* argv[])
 		std::cout << "DYNAMIC_PARALLELISM    : " << cv::cuda::deviceSupports(cv::cuda::DYNAMIC_PARALLELISM) << std::endl;
 	}
 
+	cv::ocl::setUseOpenCL(true);
 	std::vector<cv::ocl::PlatformInfo> ocl_platform_info;
+	// ocl::getPlatfomsInfo might not get correct number of OpenCL device on Jetson TK1
 	cv::ocl::getPlatfomsInfo(ocl_platform_info);
 
 	// Count the # of OpenCL capable device
@@ -280,10 +282,9 @@ int main(int argc, const char* argv[])
 		std::cout << "Version Major   [" << iDevice << "]    : " << hoge.deviceVersionMajor() <<  std::endl;
 		std::cout << "Version Minor   [" << iDevice << "]    : " << hoge.deviceVersionMinor() <<  std::endl;
 		std::cout << "Driver Version  [" << iDevice << "]    : " << hoge.driverVersion() << std::endl;
-		cv::ocl::setUseOpenCL(true);
-		std::cout << "haveOpenCL()                           : " << cv::ocl::haveOpenCL() << std::endl;
-		std::cout << "useOpenCL()                            : " << cv::ocl::useOpenCL() << std::endl;
 	}
+	std::cout << "haveOpenCL()           : " << cv::ocl::haveOpenCL() << std::endl;
+	std::cout << "useOpenCL()            : " << cv::ocl::useOpenCL() << std::endl;
 
 	cv::namedWindow(defaultWindowName);
 	// Compare the performance of CPU, CUDA and OpenCL
