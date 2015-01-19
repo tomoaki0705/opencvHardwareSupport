@@ -26,44 +26,63 @@ void comapareSobel(const char* filename)
 	using namespace cv;
 	Mat input;
 
+	// Load input image
 	input = imread(filename);
 
 	Mat result;
+	// Start measureing the Sobel filter
 	int64 countStart = getTickCount();
-	cv::blur(input, result, cv::Size(3,3));
+	Sobel(input, result, -1, 1, 1);
+	// Stop measuring
 	int64 countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 
+	// Convert the image to RGBA, so it can be uploaded to GPU
 	cvtColor(input.clone(), input, COLOR_RGB2RGBA);
+	// Start measureing including the upload time
 	int64 countBeforeTransfer = getTickCount();
+	// Upload the image to GPU (convert cv::Mat to cv::cuda::GpuMat)
 	cuda::GpuMat gpuInput = cuda::GpuMat(input);
 	cuda::GpuMat gpuResult;
-	Ptr<cuda::Filter> gpuBlur = cuda::createBoxFilter(gpuInput.type(), gpuInput.type(), Size(3,3));
+	// Prepare the Sobel filter
+	Ptr<cuda::Filter> gpuSobel = cuda::createSobelFilter(gpuInput.type(), gpuInput.type(), 1, 1);
 
+	// Start measureing the Sobel filter
 	countStart = getTickCount();
-	gpuBlur->apply(gpuInput, gpuResult);
+	gpuSobel->apply(gpuInput, gpuResult);
+	// Stop measuring
 	countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
 
-	UMat umatInput = input.getUMat(ACCESS_READ);
+	// Input using OpenCL
+	UMat umatInput;
+	// Output using OpenCL
 	UMat umatResult;
 	// dummy call
-	cv::blur(umatInput, umatResult, cv::Size(3,3));
+	Sobel(umatInput, umatResult, -1, 1, 1);
 
+	// To flush the cache, reload the image
 	input = imread(filename);
+	// Start measureing including the upload time
 	countBeforeTransfer = getTickCount();
+	// Upload the image to OpenCL device
 	umatInput = input.getUMat(ACCESS_READ);
+	// Start measureing the Sobel filter
 	countStart = getTickCount();
-	cv::blur(umatInput, umatResult, cv::Size(3,3));
+	// Apply Sobel filter
+	Sobel(umatInput, umatResult, -1, 1, 1);
+	// Stop measuring
 	countStop = getTickCount();
 
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	// Show the result from OpenCL
 	imshow(defaultWindowName, umatResult);
+	imshow("input", input);
 	waitKey(0);
 }
 
@@ -77,38 +96,51 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	after = imread(filenameAfter);
 
 	Mat diff;
+	// Start measureing the subtraction
 	int64 countStart = getTickCount();
+	// Apply subtraction
 	diff = before - after;
+	// Stop measuring
 	int64 countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 
+	// Start measureing including the upload time
 	int64 countBeforeTransfer = getTickCount();
+	// Upload the image to GPU (convert cv::Mat to cv::cuda::GpuMat)
 	cuda::GpuMat gpuBefore = cuda::GpuMat(before);
 	cuda::GpuMat gpuAfter  = cuda::GpuMat(after);
 	cuda::GpuMat gpuDiff;
 
+	// Start measureing the subtraction
 	countStart = getTickCount();
+	// Apply Subtraction
 	cuda::subtract(gpuBefore, gpuAfter, gpuDiff);
+	// Stop measuring
 	countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
 
 
-	// dummy call
 	UMat umatBefore = before.getUMat(ACCESS_READ);
 	UMat umatAfter  = after.getUMat(ACCESS_READ);
 	UMat umatDiff;
+	// dummy call
 	subtract(umatBefore, umatAfter, umatDiff);
 
+	// To flush the cache, reload the image
 	before = imread(filenameBefore);
 	after = imread(filenameAfter);
+	// Start measureing including the upload time
 	countBeforeTransfer = getTickCount();
 	umatBefore = before.getUMat(ACCESS_READ);
 	umatAfter  = after.getUMat(ACCESS_READ);
+	// Start measureing the subtraction
 	countStart = getTickCount();
+	// Apply subtract on OpenCL device
 	subtract(umatBefore, umatAfter, umatDiff);
+	// Convert the image to RGBA, so it can be uploaded to GPU
 	countStop = getTickCount();
 
 
@@ -126,19 +158,27 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	after = imread(filenameAfter);
 
 	Mat diff;
+	// Start measureing the absdiff
 	int64 countStart = getTickCount();
+	// Apply absdiff
 	absdiff(before, after, diff);
+	// Stop measuring
 	int64 countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 
+	// Start measureing including the upload time
 	int64 countBeforeTransfer = getTickCount();
+	// Upload the image to GPU (convert cv::Mat to cv::cuda::GpuMat)
 	cuda::GpuMat gpuBefore = cuda::GpuMat(before);
 	cuda::GpuMat gpuAfter  = cuda::GpuMat(after);
 	cuda::GpuMat gpuDiff;
 
+	// Start measureing the absdiff
 	countStart = getTickCount();
+	// Apply abdiff on CUDA
 	cuda::absdiff(gpuBefore, gpuAfter, gpuDiff);
+	// Stop measuring
 	countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
@@ -151,13 +191,19 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	// dummy call
 	absdiff(umatBefore, umatAfter, umatDiff);
 
+	// To flush the cache, reload the image
 	before = imread(filenameBefore);
 	after = imread(filenameAfter);
+	// Start measureing including the upload time
 	countBeforeTransfer = getTickCount();
+	// Upload the image (convert it to UMat)
 	umatBefore = before.getUMat(ACCESS_READ);
 	umatAfter  = after.getUMat(ACCESS_READ);
+	// Start measureing the subtraction
 	countStart = getTickCount();
+	// Apply absdiff on OpenCL device
 	absdiff(umatBefore, umatAfter, umatDiff);
+	// Stop measuring
 	countStop = getTickCount();
 
 
@@ -172,6 +218,7 @@ int main(int argc, const char* argv[])
 	// dump the build information
 	std::cout << cv::getBuildInformation() << std::endl;
 
+	// Check HW support of CPU vector
 	std::cout << "CPU_MMX   : " << cv::checkHardwareSupport(CV_CPU_MMX   ) << std::endl;
 	std::cout << "CPU_SSE   : " << cv::checkHardwareSupport(CV_CPU_SSE   ) << std::endl;
 	std::cout << "CPU_SSE2  : " << cv::checkHardwareSupport(CV_CPU_SSE2  ) << std::endl;
@@ -181,12 +228,16 @@ int main(int argc, const char* argv[])
 	std::cout << "CPU_SSE4_2: " << cv::checkHardwareSupport(CV_CPU_SSE4_2) << std::endl;
 	std::cout << "CPU_POPCNT: " << cv::checkHardwareSupport(CV_CPU_POPCNT) << std::endl;
 	std::cout << "CPU_AVX   : " << cv::checkHardwareSupport(CV_CPU_AVX   ) << std::endl;
+	// this will always return 0
+	// Today (Jan 2015), runtime check of NEON optimization is not yet implemented in OpenCv
 	std::cout << "CPU_NEON  : " << cv::checkHardwareSupport(CV_CPU_NEON  ) << std::endl;
 
+	// Count the # of CUDA devices(i.e. GPU)
 	int cudaDeviceCount;
 	cudaDeviceCount = cv::cuda::getCudaEnabledDeviceCount();
 	std::cout << "Device # of CUDA       : " << cudaDeviceCount << std::endl;
 
+	// Dump the HW feature of each GPU
 	for(int iDevice = 0;iDevice < cudaDeviceCount;iDevice++)
 	{
 		cv::cuda::DeviceInfo hoge(iDevice);
@@ -211,7 +262,8 @@ int main(int argc, const char* argv[])
 	std::vector<cv::ocl::PlatformInfo> ocl_platform_info;
 	cv::ocl::getPlatfomsInfo(ocl_platform_info);
 
-	std::cout << "Device # of OpenCL     : " << cudaDeviceCount << std::endl;
+	// Count the # of OpenCL capable device
+	std::cout << "Device # of OpenCL     : " << ocl_platform_info.size() << std::endl;
 	for(unsigned int iDevice = 0;iDevice < ocl_platform_info.size();iDevice++)
 	{
 		std::cout << "name   [" << iDevice << "]             : " << ocl_platform_info[iDevice].name() << std::endl;
@@ -234,8 +286,12 @@ int main(int argc, const char* argv[])
 	}
 
 	cv::namedWindow(defaultWindowName);
+	// Compare the performance of CPU, CUDA and OpenCL
+	// Compare the performance on AbsDiff
 	compareAbsDiff(LENA, IDOJUN);
+	// Compare the performance on Subtraction
 	compareDiff(LENA, IDOJUN);
+	// Compare the performance on Sobel
 	comapareSobel(IDOJUN);
 
 	return 0;
