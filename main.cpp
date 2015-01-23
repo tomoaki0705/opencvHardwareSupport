@@ -5,6 +5,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudafilters.hpp>
+#include <opencv2/cudawarping.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 #include <iostream>
 
 const char LENA[]              = "lena.jpg";
@@ -12,6 +14,8 @@ const char IDOJUN[]            = "compare.jpg";
 const char defaultUnit[]       = "[ms]";
 const char defaultWindowName[] = "hoge";
 const char dumpTitleOfTime[]   = "CPU\t\tCuda\t\t(w/transfer)\tOpenCL\t\t(w/transfer)";
+double coordinateLeft[]  = {0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0};
+ double coordinateRight[] = {0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0};
 
 void dumpConsumedTime(int64 countStart, int64 countStop, const char* unit = NULL)
 {
@@ -21,6 +25,84 @@ void dumpConsumedTime(int64 countStart, int64 countStop, const char* unit = NULL
 	}
 	std::cout << ((countStop - countStart) * 1000) / cv::getTickFrequency() << unit << '\t';
 }
+
+void comapareWarpAffine(const char* filename)
+{
+	using namespace cv;
+	Mat input;
+
+	// Load input image
+	input = imread(filename);
+
+	cv::Mat coordinatesLeft  = cv::Mat(1, 4, CV_64FC2, (void*)coordinateLeft);
+	cv::Mat coordinatesRight = cv::Mat(1, 4, CV_64FC2, (void*)coordinateRight);
+	cv::Mat outputMaskArray  = cv::Mat(1, 4, CV_8U);
+	cv::Mat homography;
+	coordinatesLeft  *= (double)input.size().width;
+	coordinatesRight *= (double)input.size().width;
+
+	homography = cv::findHomography(coordinatesLeft, coordinatesRight,outputMaskArray);
+	std::cout << homography << std::endl;
+
+	Mat result;
+	// Start measureing the Sobel filter
+	int64 countStart = getTickCount();
+	warpPerspective(input, result, homography, input.size());
+	// Stop measuring
+	int64 countStop = getTickCount();
+
+	dumpConsumedTime(countStart, countStop, defaultUnit);
+
+	// Convert the image to RGBA, so it can be uploaded to GPU
+	cvtColor(input.clone(), input, COLOR_RGB2RGBA);
+	// Start measureing including the upload time
+	int64 countBeforeTransfer = getTickCount();
+	// Upload the image to GPU (convert cv::Mat to cv::cuda::GpuMat)
+	cuda::GpuMat gpuInput = cuda::GpuMat(input);
+	cuda::GpuMat gpuResult;
+	// Prepare the Sobel filter
+	cuda::warpPerspective(gpuInput, gpuResult, homography, gpuInput.size());
+
+
+	// Start measureing the Sobel filter
+	countStart = getTickCount();
+	cuda::warpPerspective(gpuInput, gpuResult, homography, gpuInput.size());
+	// Stop measuring
+	countStop = getTickCount();
+
+	dumpConsumedTime(countStart, countStop, defaultUnit);
+	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+
+	// Input using OpenCL
+	UMat umatInput = input.getUMat(ACCESS_READ);
+	// Output using OpenCL
+	UMat umatResult;
+	// dummy call
+	warpPerspective(umatInput, umatResult, homography, input.size());
+
+	// To flush the cache, reload the image
+	input = imread(filename);
+	// Start measureing including the upload time
+	countBeforeTransfer = getTickCount();
+	// Upload the image to OpenCL device
+	umatInput = input.getUMat(ACCESS_READ);
+	// Start measureing the Sobel filter
+	countStart = getTickCount();
+	// Apply Sobel filter
+	warpPerspective(umatInput, umatResult, homography, input.size());
+	// Stop measuring
+	countStop = getTickCount();
+
+
+	dumpConsumedTime(countStart, countStop, defaultUnit);
+	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	std::cout << std::endl;
+	// Show the result from OpenCL
+	imshow(defaultWindowName, umatResult);
+	imshow("input", input);
+	waitKey(0);
+}
+
 
 void comapareSobel(const char* filename)
 {
@@ -294,6 +376,7 @@ int main(int argc, const char* argv[])
 	std::cout << dumpTitleOfTime                                      << std::endl;
 
 	cv::namedWindow(defaultWindowName);
+	comapareWarpAffine(IDOJUN);
 	// Compare the performance of CPU, CUDA and OpenCL
 	// Compare the performance on AbsDiff
 	compareAbsDiff(LENA, IDOJUN);
@@ -301,6 +384,14 @@ int main(int argc, const char* argv[])
 	compareDiff(LENA, IDOJUN);
 	// Compare the performance on Sobel
 	comapareSobel(IDOJUN);
+
+	cv::Mat coordinatesLeft  = cv::Mat(1, 4, CV_64FC2, (void*)coordinateLeft);
+	cv::Mat coordinatesRight = cv::Mat(1, 4, CV_64FC2, (void*)coordinateRight);
+	cv::Mat outputMaskArray  = cv::Mat(1, 4, CV_8U);
+	cv::Mat homography;
+
+	homography = cv::findHomography(coordinatesLeft, coordinatesRight,outputMaskArray);
+	std::cout << homography << std::endl;
 
 	return 0;
 }
