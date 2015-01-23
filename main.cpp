@@ -59,7 +59,7 @@ void comapareSobel(const char* filename)
 	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
 	// Input using OpenCL
-	UMat umatInput;
+	UMat umatInput = input.getUMat(ACCESS_READ);
 	// Output using OpenCL
 	UMat umatResult;
 	// dummy call
