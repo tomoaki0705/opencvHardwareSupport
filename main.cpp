@@ -7,10 +7,11 @@
 #include <opencv2/cudafilters.hpp>
 #include <iostream>
 
-const char LENA[] = "lena.jpg";
-const char IDOJUN[] = "compare.jpg";
-const char defaultUnit[] = "[ms]";
+const char LENA[]              = "lena.jpg";
+const char IDOJUN[]            = "compare.jpg";
+const char defaultUnit[]       = "[ms]";
 const char defaultWindowName[] = "hoge";
+const char dumpTitleOfTime[]   = "CPU\t\tCuda\t\t(w/transfer)\tOpenCL\t\t(w/transfer)";
 
 void dumpConsumedTime(int64 countStart, int64 countStop, const char* unit = NULL)
 {
@@ -18,7 +19,7 @@ void dumpConsumedTime(int64 countStart, int64 countStop, const char* unit = NULL
 	{
 		unit = defaultUnit;
 	}
-	std::cout << ((countStop - countStart) * 1000) / cv::getTickFrequency() << unit << std::endl;
+	std::cout << ((countStop - countStart) * 1000) / cv::getTickFrequency() << unit << '\t';
 }
 
 void comapareSobel(const char* filename)
@@ -55,7 +56,7 @@ void comapareSobel(const char* filename)
 	countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
 	// Input using OpenCL
 	UMat umatInput;
@@ -79,7 +80,8 @@ void comapareSobel(const char* filename)
 
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	std::cout << std::endl;
 	// Show the result from OpenCL
 	imshow(defaultWindowName, umatResult);
 	imshow("input", input);
@@ -120,7 +122,7 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
 
 	UMat umatBefore = before.getUMat(ACCESS_READ);
@@ -145,7 +147,9 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	std::cout << std::endl;
+	waitKey(0);
 }
 
 void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
@@ -182,7 +186,7 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	countStop = getTickCount();
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
 	UMat umatBefore = before.getUMat(ACCESS_READ);
 	UMat umatAfter  = after.getUMat(ACCESS_READ);
@@ -208,7 +212,8 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 
 
 	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, "[ms] (including transfer)");
+	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	std::cout << std::endl;
 	imshow(defaultWindowName, umatDiff);
 	waitKey(0);
 }
@@ -216,7 +221,7 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 int main(int argc, const char* argv[])
 {
 	// dump the build information
-	std::cout << cv::getBuildInformation() << std::endl;
+	//std::cout << cv::getBuildInformation() << std::endl;
 
 	// Check HW support of CPU vector
 	std::cout << "CPU_MMX   : " << cv::checkHardwareSupport(CV_CPU_MMX   ) << std::endl;
@@ -284,7 +289,8 @@ int main(int argc, const char* argv[])
 		std::cout << "Driver Version  [" << iDevice << "]    : " << hoge.driverVersion() << std::endl;
 	}
 	std::cout << "haveOpenCL()           : " << cv::ocl::haveOpenCL() << std::endl;
-	std::cout << "useOpenCL()            : " << cv::ocl::useOpenCL() << std::endl;
+	std::cout << "useOpenCL()            : " << cv::ocl::useOpenCL()  << std::endl;
+	std::cout << dumpTitleOfTime                                      << std::endl;
 
 	cv::namedWindow(defaultWindowName);
 	// Compare the performance of CPU, CUDA and OpenCL
