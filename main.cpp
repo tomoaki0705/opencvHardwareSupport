@@ -149,6 +149,7 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	dumpConsumedTime(countStart, countStop, defaultUnit);
 	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 	std::cout << std::endl;
+	imshow(defaultWindowName, umatDiff);
 	waitKey(0);
 }
 
