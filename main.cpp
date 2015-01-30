@@ -19,6 +19,18 @@ double coordinateRight[] = {0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0};
 const int iterationBefore      = 10;
 const int iterationAfter       = 50;
 
+void dumpConsumedTimeForDiff(int64 countStart, int64 countStop, const char* unit = NULL)
+{
+	if(unit == NULL)
+	{
+		unit = defaultUnit;
+	}
+	int64 elapsedTime = countStop - countStart;
+	int64 elapsedDiff = (elapsedTime * 1000) / (iterationAfter);
+	std::cout << (elapsedDiff) / cv::getTickFrequency() << unit << '\t';
+
+
+}
 void dumpConsumedTime(int64 countStart, int64 countStop, int64 countStartAfter, int64 countStopAfter, const char* unit = NULL)
 {
 	if(unit == NULL)
@@ -258,7 +270,7 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	}
 	int64 countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	dumpConsumedTimeForDiff(countStartAfter, countStopAfter, defaultUnit);
 	//dumpConsumedTime(countStart, countStop, defaultUnit);
 
 	// Start measureing including the upload time
@@ -286,7 +298,7 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	// Stop measuring
 	countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	dumpConsumedTimeForDiff(countStartAfter, countStopAfter, defaultUnit);
 	//dumpConsumedTime(countStart, countStop, defaultUnit);
 	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
@@ -322,7 +334,7 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	countStopAfter = getTickCount();
 
 
-	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	dumpConsumedTimeForDiff(countStartAfter, countStopAfter, defaultUnit);
 	//dumpConsumedTime(countStart, countStop, defaultUnit);
 	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 	std::cout << std::endl;
@@ -357,8 +369,8 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	}
 	int64 countStopAfter = getTickCount();
 
-	std::cout << countStart << '\t' << countStop << '\t' << countStartAfter << '\t'  << countStopAfter << std::endl;
-	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//std::cout << countStart << '\t' << countStop << '\t' << countStartAfter << '\t'  << countStopAfter << std::endl;
+	dumpConsumedTimeForDiff(countStartAfter, countStopAfter, defaultUnit);
 	//dumpConsumedTime(countStart, countStop, defaultUnit);
 
 	// Start measureing including the upload time
@@ -385,7 +397,7 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	}
 	countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	dumpConsumedTimeForDiff(countStartAfter, countStopAfter, defaultUnit);
 	//dumpConsumedTime(countStart, countStop, defaultUnit);
 	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
@@ -421,7 +433,7 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	}
 	countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	dumpConsumedTimeForDiff(countStartAfter, countStopAfter, defaultUnit);
 	//dumpConsumedTime(countStart, countStop, defaultUnit);
 	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 	std::cout << std::endl;
