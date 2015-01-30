@@ -15,15 +15,20 @@ const char defaultUnit[]       = "[ms]";
 const char defaultWindowName[] = "hoge";
 const char dumpTitleOfTime[]   = "CPU\t\tCuda\t\t(w/transfer)\tOpenCL\t\t(w/transfer)";
 double coordinateLeft[]  = {0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0};
- double coordinateRight[] = {0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0};
+double coordinateRight[] = {0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0};
+const int iterationBefore      = 10;
+const int iterationAfter       = 50;
 
-void dumpConsumedTime(int64 countStart, int64 countStop, const char* unit = NULL)
+void dumpConsumedTime(int64 countStart, int64 countStop, int64 countStartAfter, int64 countStopAfter, const char* unit = NULL)
 {
 	if(unit == NULL)
 	{
 		unit = defaultUnit;
 	}
-	std::cout << ((countStop - countStart) * 1000) / cv::getTickFrequency() << unit << '\t';
+	int64 elapsedBefore  = countStop - countStart;
+	int64 elapsedAfter   = countStopAfter - countStartAfter;
+	int64 elapsedDiff    = ((elapsedAfter - elapsedBefore) * 1000) / (iterationAfter - iterationBefore);
+	std::cout << (elapsedDiff) / cv::getTickFrequency() << unit << '\t';
 }
 
 void comapareWarpAffine(const char* filename)
@@ -42,16 +47,27 @@ void comapareWarpAffine(const char* filename)
 	coordinatesRight *= (double)input.size().width;
 
 	homography = cv::findHomography(coordinatesLeft, coordinatesRight,outputMaskArray);
-	std::cout << homography << std::endl;
+	//std::cout << homography << std::endl;
 
 	Mat result;
 	// Start measureing the Sobel filter
 	int64 countStart = getTickCount();
-	warpPerspective(input, result, homography, input.size());
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		warpPerspective(input, result, homography, input.size());
+	}
 	// Stop measuring
 	int64 countStop = getTickCount();
+	int64 countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		warpPerspective(input, result, homography, input.size());
+	}
+	// Stop measuring
+	int64 countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
+
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
 
 	// Convert the image to RGBA, so it can be uploaded to GPU
 	cvtColor(input.clone(), input, COLOR_RGB2RGBA);
@@ -66,12 +82,23 @@ void comapareWarpAffine(const char* filename)
 
 	// Start measureing the Sobel filter
 	countStart = getTickCount();
-	cuda::warpPerspective(gpuInput, gpuResult, homography, gpuInput.size());
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		cuda::warpPerspective(gpuInput, gpuResult, homography, gpuInput.size());
+	}
 	// Stop measuring
 	countStop = getTickCount();
+	countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		cuda::warpPerspective(gpuInput, gpuResult, homography, input.size());
+	}
+	// Stop measuring
+	countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
+	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
 	// Input using OpenCL
 	UMat umatInput = input.getUMat(ACCESS_READ);
@@ -88,14 +115,25 @@ void comapareWarpAffine(const char* filename)
 	umatInput = input.getUMat(ACCESS_READ);
 	// Start measureing the Sobel filter
 	countStart = getTickCount();
-	// Apply Sobel filter
-	warpPerspective(umatInput, umatResult, homography, input.size());
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		// Apply Sobel filter
+		warpPerspective(umatInput, umatResult, homography, input.size());
+	}
 	// Stop measuring
 	countStop = getTickCount();
+	countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		warpPerspective(umatInput, umatResult, homography, input.size());
+	}
+	// Stop measuring
+	countStopAfter = getTickCount();
 
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
+	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 	std::cout << std::endl;
 	// Show the result from OpenCL
 	imshow(defaultWindowName, umatResult);
@@ -115,11 +153,21 @@ void comapareSobel(const char* filename)
 	Mat result;
 	// Start measureing the Sobel filter
 	int64 countStart = getTickCount();
-	Sobel(input, result, -1, 1, 1);
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		Sobel(input, result, -1, 1, 1);
+	}
 	// Stop measuring
 	int64 countStop = getTickCount();
+	int64 countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		Sobel(input, result, -1, 1, 1);
+	}
+	int64 countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
 
 	// Convert the image to RGBA, so it can be uploaded to GPU
 	cvtColor(input.clone(), input, COLOR_RGB2RGBA);
@@ -133,12 +181,22 @@ void comapareSobel(const char* filename)
 
 	// Start measureing the Sobel filter
 	countStart = getTickCount();
-	gpuSobel->apply(gpuInput, gpuResult);
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		gpuSobel->apply(gpuInput, gpuResult);
+	}
 	// Stop measuring
 	countStop = getTickCount();
+	countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		gpuSobel->apply(gpuInput, gpuResult);
+	}
+	countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
+	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
 	// Input using OpenCL
 	UMat umatInput = input.getUMat(ACCESS_READ);
@@ -155,14 +213,18 @@ void comapareSobel(const char* filename)
 	umatInput = input.getUMat(ACCESS_READ);
 	// Start measureing the Sobel filter
 	countStart = getTickCount();
-	// Apply Sobel filter
-	Sobel(umatInput, umatResult, -1, 1, 1);
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		// Apply Sobel filter
+		Sobel(umatInput, umatResult, -1, 1, 1);
+	}
 	// Stop measuring
 	countStop = getTickCount();
 
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
+	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 	std::cout << std::endl;
 	// Show the result from OpenCL
 	imshow(defaultWindowName, umatResult);
@@ -183,11 +245,21 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	// Start measureing the subtraction
 	int64 countStart = getTickCount();
 	// Apply subtraction
-	diff = before - after;
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		diff = before - after;
+	}
 	// Stop measuring
 	int64 countStop = getTickCount();
+	int64 countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		diff = before - after;
+	}
+	int64 countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
 
 	// Start measureing including the upload time
 	int64 countBeforeTransfer = getTickCount();
@@ -198,13 +270,25 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 
 	// Start measureing the subtraction
 	countStart = getTickCount();
-	// Apply Subtraction
-	cuda::subtract(gpuBefore, gpuAfter, gpuDiff);
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		// Apply Subtraction
+		cuda::subtract(gpuBefore, gpuAfter, gpuDiff);
+	}
 	// Stop measuring
 	countStop = getTickCount();
+	countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		// Apply Subtraction
+		cuda::subtract(gpuBefore, gpuAfter, gpuDiff);
+	}
+	// Stop measuring
+	countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
+	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
 
 	UMat umatBefore = before.getUMat(ACCESS_READ);
@@ -222,14 +306,25 @@ void compareDiff(const char* filenameBefore, const char* filenameAfter)
 	umatAfter  = after.getUMat(ACCESS_READ);
 	// Start measureing the subtraction
 	countStart = getTickCount();
-	// Apply subtract on OpenCL device
-	subtract(umatBefore, umatAfter, umatDiff);
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		// Apply subtract on OpenCL device
+		subtract(umatBefore, umatAfter, umatDiff);
+	}
 	// Convert the image to RGBA, so it can be uploaded to GPU
 	countStop = getTickCount();
+	countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		// Apply subtract on OpenCL device
+		subtract(umatBefore, umatAfter, umatDiff);
+	}
+	countStopAfter = getTickCount();
 
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
+	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 	std::cout << std::endl;
 	imshow(defaultWindowName, umatDiff);
 	waitKey(0);
@@ -247,12 +342,24 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	Mat diff;
 	// Start measureing the absdiff
 	int64 countStart = getTickCount();
-	// Apply absdiff
-	absdiff(before, after, diff);
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		// Apply absdiff
+		absdiff(before, after, diff);
+	}
 	// Stop measuring
 	int64 countStop = getTickCount();
+	int64 countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		// Apply absdiff
+		absdiff(before, after, diff);
+	}
+	int64 countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
+	std::cout << countStart << '\t' << countStop << '\t' << countStartAfter << '\t'  << countStopAfter << std::endl;
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
 
 	// Start measureing including the upload time
 	int64 countBeforeTransfer = getTickCount();
@@ -263,13 +370,24 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 
 	// Start measureing the absdiff
 	countStart = getTickCount();
-	// Apply abdiff on CUDA
-	cuda::absdiff(gpuBefore, gpuAfter, gpuDiff);
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		// Apply abdiff on CUDA
+		cuda::absdiff(gpuBefore, gpuAfter, gpuDiff);
+	}
 	// Stop measuring
 	countStop = getTickCount();
+	countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		// Apply abdiff on CUDA
+		cuda::absdiff(gpuBefore, gpuAfter, gpuDiff);
+	}
+	countStopAfter = getTickCount();
 
-	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
+	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 
 	UMat umatBefore = before.getUMat(ACCESS_READ);
 	UMat umatAfter  = after.getUMat(ACCESS_READ);
@@ -288,14 +406,24 @@ void compareAbsDiff(const char* filenameBefore, const char* filenameAfter)
 	umatAfter  = after.getUMat(ACCESS_READ);
 	// Start measureing the subtraction
 	countStart = getTickCount();
-	// Apply absdiff on OpenCL device
-	absdiff(umatBefore, umatAfter, umatDiff);
+	for(int i = 0;i < iterationBefore;i++)
+	{
+		// Apply absdiff on OpenCL device
+		absdiff(umatBefore, umatAfter, umatDiff);
+	}
 	// Stop measuring
 	countStop = getTickCount();
+	countStartAfter = getTickCount();
+	for(int i = 0;i < iterationAfter;i++)
+	{
+		// Apply absdiff on OpenCL device
+		absdiff(umatBefore, umatAfter, umatDiff);
+	}
+	countStopAfter = getTickCount();
 
-
-	dumpConsumedTime(countStart, countStop, defaultUnit);
-	dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
+	dumpConsumedTime(countStart, countStop, countStartAfter, countStopAfter, defaultUnit);
+	//dumpConsumedTime(countStart, countStop, defaultUnit);
+	//dumpConsumedTime(countBeforeTransfer, countStop, defaultUnit);
 	std::cout << std::endl;
 	imshow(defaultWindowName, umatDiff);
 	waitKey(0);
@@ -305,7 +433,7 @@ int main(int argc, const char* argv[])
 {
 	// dump the build information
 	//std::cout << cv::getBuildInformation() << std::endl;
-
+#if 0
 	// Check HW support of CPU vector
 	std::cout << "CPU_MMX   : " << cv::checkHardwareSupport(CV_CPU_MMX   ) << std::endl;
 	std::cout << "CPU_SSE   : " << cv::checkHardwareSupport(CV_CPU_SSE   ) << std::endl;
@@ -373,10 +501,10 @@ int main(int argc, const char* argv[])
 	}
 	std::cout << "haveOpenCL()           : " << cv::ocl::haveOpenCL() << std::endl;
 	std::cout << "useOpenCL()            : " << cv::ocl::useOpenCL()  << std::endl;
+#endif
 	std::cout << dumpTitleOfTime                                      << std::endl;
 
 	cv::namedWindow(defaultWindowName);
-	comapareWarpAffine(IDOJUN);
 	// Compare the performance of CPU, CUDA and OpenCL
 	// Compare the performance on AbsDiff
 	compareAbsDiff(LENA, IDOJUN);
@@ -384,6 +512,7 @@ int main(int argc, const char* argv[])
 	compareDiff(LENA, IDOJUN);
 	// Compare the performance on Sobel
 	comapareSobel(IDOJUN);
+	comapareWarpAffine(IDOJUN);
 
 	cv::Mat coordinatesLeft  = cv::Mat(1, 4, CV_64FC2, (void*)coordinateLeft);
 	cv::Mat coordinatesRight = cv::Mat(1, 4, CV_64FC2, (void*)coordinateRight);
@@ -391,7 +520,7 @@ int main(int argc, const char* argv[])
 	cv::Mat homography;
 
 	homography = cv::findHomography(coordinatesLeft, coordinatesRight,outputMaskArray);
-	std::cout << homography << std::endl;
+	//std::cout << homography << std::endl;
 
 	return 0;
 }
